@@ -1,0 +1,113 @@
+import os
+from tkinter import Tk, Label, Entry, Button, filedialog, messagebox, IntVar, StringVar, BooleanVar, Checkbutton, PhotoImage
+from PyPDF2 import PdfReader, PdfWriter
+
+
+def merge_pdfs_from_folders(
+    root_folder, output_folder, output_filename, ignore_email=False, max_pages=None
+):
+    # Variações da palavra "email"
+    email_keywords = ["email", "e-mail", "mail"]
+
+    pdf_writer = PdfWriter()
+
+    for foldername, subfolders, filenames in os.walk(root_folder):
+        for filename in filenames:
+            if isinstance(filename, str) and filename.lower().endswith(".pdf"):
+                # Ignorar arquivos relacionados a e-mails, se a opção estiver marcada
+                if ignore_email and any(keyword in filename.lower() for keyword in email_keywords):
+                    continue
+
+                filepath = os.path.join(foldername, filename)
+                try:
+                    pdf_reader = PdfReader(filepath)
+                    total_pages = len(pdf_reader.pages)
+
+                    if max_pages is not None and total_pages > max_pages:
+                        continue
+
+                    for page in pdf_reader.pages:
+                        pdf_writer.add_page(page)
+
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Erro ao processar {filepath}: {e}")
+
+    os.makedirs(output_folder, exist_ok=True)
+    output_path = os.path.join(output_folder, output_filename)
+
+    with open(output_path, "wb") as output_pdf:
+        pdf_writer.write(output_pdf)
+    messagebox.showinfo("Sucesso", f"PDF final criado em: {output_path}")
+
+
+# Função para abrir uma janela para selecionar pastas
+def select_folder(var):
+    folder = filedialog.askdirectory()
+    if folder:
+        var.set(folder)
+
+
+# Função principal para configurar a interface
+def create_interface():
+    root = Tk()
+    root.title("Combinar PDFs")
+    root.geometry("650x300")
+
+
+    root.iconbitmap("C:\\Users\\Max\\Desktop\\Projetos\\running_1.ico") 
+
+    
+    # Variáveis
+    root_folder = StringVar()
+    output_folder = StringVar()
+    output_filename = StringVar(value="resultado.pdf")
+    max_pages = IntVar(value=0)  # 0 indica sem limite
+    use_max_pages = BooleanVar(value=False)
+    ignore_email = BooleanVar(value=False)  # Controle para ignorar arquivos de e-mails
+    root.resizable(False, False)
+
+
+    # Labels e Entradas
+    Label(root, text="Pasta de Entrada:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+    Entry(root, textvariable=root_folder, width=50).grid(row=0, column=1, pady=5)
+    Button(root, text="Selecionar", command=lambda: select_folder(root_folder)).grid(row=0, column=2, pady=5)
+
+    Label(root, text="Pasta de Saída:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
+    Entry(root, textvariable=output_folder, width=50).grid(row=1, column=1, pady=5)
+    Button(root, text="Selecionar", command=lambda: select_folder(output_folder)).grid(row=1, column=2, pady=5)
+
+    Label(root, text="Nome do Arquivo de Saída:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
+    Entry(root, textvariable=output_filename, width=50).grid(row=2, column=1, pady=5)
+
+    Checkbutton(root, text="Ignorar arquivos relacionados a e-mails", variable=ignore_email).grid(
+        row=3, column=0, padx=10, pady=5, sticky="w"
+    )
+
+    Checkbutton(root, text="Limitar número de páginas", variable=use_max_pages).grid(
+        row=4, column=0, padx=10, pady=5, sticky="w"
+    )
+    Entry(root, textvariable=max_pages, width=10).grid(row=4, column=1, pady=5, sticky="w")
+
+    # Botão para executar
+    def execute_merge():
+        if not root_folder.get() or not output_folder.get():
+            messagebox.showwarning("Aviso", "Pasta de entrada e saída são obrigatórias!")
+            return
+
+        merge_pdfs_from_folders(
+            root_folder=root_folder.get(),
+            output_folder=output_folder.get(),
+            output_filename=output_filename.get(),
+            ignore_email=ignore_email.get(),
+            max_pages=max_pages.get() if use_max_pages.get() else None,
+        )
+
+    Button(root, text="Combinar PDFs", command=execute_merge, bg="green", fg="white").grid(row=5, column=1, pady=20)
+
+    root.mainloop()
+
+
+# Iniciar a interface
+if __name__ == "__main__":
+    create_interface()
+
